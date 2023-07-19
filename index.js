@@ -13,16 +13,27 @@ const db = mysql.createConnection({
   database: "sampledatabase"
 });
 
-const initializeDbAndServer = () => {
+const maxRetryAttempts = 3; 
+const retryInterval = 2000; 
+
+const initializeDbAndServer = (retryCount = 0) => {
+  console.log("Connecting to the database...");
   db.connect((err) => {
     if (err) {
-      console.log(`DATABASE ERROR ${err}`);
-      process.exit(1);
+      console.log(`DATABASE ERROR: ${err}`);
+      if (retryCount < maxRetryAttempts) {
+        console.log(`Retrying connection... (Attempt ${retryCount + 1})`);
+        setTimeout(() => initializeDbAndServer(retryCount + 1), retryInterval);
+      } else {
+        console.log("Unable to connect to the database after multiple attempts.");
+        process.exit(1);
+      }
+    } else {
+      console.log("Database Connected Successfully");
+      app.listen(3000, () => {
+        console.log("Server Running at http://localhost:3000/");
+      });
     }
-    console.log("Database Connected Successfully");
-    app.listen(3000, () => {
-      console.log("Server Running at http://localhost:3000/");
-    });
   });
 };
 
@@ -41,9 +52,7 @@ app.post("/posttext", (req, res) => {
         res.send(results);
       }
     });
-  });
-  
-  
+});
 
 app.get("/gettext", (req, res) => {
   const getTextQuery = `
@@ -61,10 +70,5 @@ app.get("/gettext", (req, res) => {
     }
   });
 });
-
-
-
-
-
 
 initializeDbAndServer();
